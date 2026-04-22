@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'XArchiver Version'
+        type: string
+        default: '0.1.0'
+
+permissions:
+  contents: write
+
+env:
+  XARCHIVER_VERSION: ${{ inputs.version }}
+  TZ: Asia/Shanghai
+
+jobs:
+  release:
+    name: Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.GH_REPO }}
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'frontend/package.json'
+          check-latest: true
+
+      - name: Prepare
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+          npm install -g pnpm@9
+
+      - name: Build
+        run: |
+          wails3 build
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ inputs.version }}
+          tag_name: v${{ inputs.version }}
+          body_path: CHANGELOG.md
+          files: |
+            ./bin/XArchiver.exe
+          token: ${{ secrets.MY_PAT }}
